@@ -54,16 +54,17 @@ namespace StreamCompaction {
          */
         int compactWithScan(int n, int *odata, const int *idata) {
            
-            // TODO
             if (n == 0) return 0;
             int* flags = new int[n];
             int* indices = new int[n];
 
             timer().startCpuTimer();
+            timer().startCpuSubTimer("map");
             for (int i = 0; i < n; i++) {
                 flags[i] = (idata[i] != 0) ? 1 : 0;
             }
-
+            timer().endCpuSubTimer();
+            timer().startCpuSubTimer("scan");
             { //Inline scan
                 int sum = 0;
                 for (int i = 0; i < n; i++) {
@@ -71,12 +72,14 @@ namespace StreamCompaction {
                     sum += flags[i];
                 }
             }
-
+            timer().endCpuSubTimer();
+            timer().startCpuSubTimer("scatter");
             for (int i = 0; i < n; i++) {
                 if (flags[i] == 1) {
                     odata[indices[i]] = idata[i];
                 }
             }
+            timer().endCpuSubTimer();
             int count = (n == 0) ? 0 : indices[n - 1] + flags[n - 1];
             timer().endCpuTimer();
 
