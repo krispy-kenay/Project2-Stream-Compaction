@@ -193,7 +193,6 @@ Output from the pre-written test + a custom test comparing and validating my rad
 *******************
 ** SORTING TESTS **
 *******************
-4194304
     [  36  44  23  27   6   7  41   5  42   2  14  30  34 ...  25  25 ]
 ==== cpu std::sort ====
    elapsed time: 73.1832ms    (std::chrono Measured)
