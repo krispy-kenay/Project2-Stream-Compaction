@@ -44,6 +44,30 @@ namespace StreamCompaction {
             data[right] = t + data[right];
         }
 
+        __global__ void kernExtractBit(int n, int bit, int* idata, int* odata) {
+            int idx = blockIdx.x * blockDim.x + threadIdx.x;
+            if (idx >= n) return;
+            
+            unsigned int ukey = (static_cast<unsigned int>(idata[idx]) ^ 0x80000000u);
+            int b = (ukey >> bit) & 1u;
+            odata[idx] = 1 - b;
+        }
+
+        __global__ void kernScatterByBit(int n, int* idata, int* bitArray,
+            int* scanned, int* odata, int totalFalses) {
+            int idx = blockIdx.x * blockDim.x + threadIdx.x;
+            if (idx >= n) return;
+
+            int bit = bitArray[idx];
+            if (bit == 1) {
+                odata[scanned[idx]] = idata[idx];
+            }
+            else {
+                int pos = totalFalses + (idx - scanned[idx]);
+                odata[pos] = idata[idx];
+            }
+        }
+
         void scanDevice(int n, int* dev_out, const int* dev_in) {
             int log2n = ilog2ceil(n);
             int m = 1 << log2n;
@@ -152,6 +176,44 @@ namespace StreamCompaction {
             cudaFree(dev_out);
 
             return validCount;
+        }
+
+        void radixSort(int n, int* odata, const int* idata) {
+            int* dev_in, * dev_out, * dev_bits, * dev_scanned;
+            cudaMalloc(&dev_in, n * sizeof(int));
+            cudaMalloc(&dev_out, n * sizeof(int));
+            cudaMalloc(&dev_bits, n * sizeof(int));
+            cudaMalloc(&dev_scanned, n * sizeof(int));
+
+            cudaMemcpy(dev_in, idata, n * sizeof(int), cudaMemcpyHostToDevice);
+
+            int gridSize = (n + BLOCK_SIZE - 1) / BLOCK_SIZE;
+
+            timer().startGpuTimer();
+
+            for (int bit = 0; bit < 32; bit++) {
+                kernExtractBit<<<gridSize, BLOCK_SIZE >>>(n, bit, dev_in, dev_bits);
+
+                scanDevice(n, dev_scanned, dev_bits);
+
+                int lastScan = 0, lastIsZero = 0;
+                cudaMemcpy(&lastScan, dev_scanned + (n - 1), sizeof(int), cudaMemcpyDeviceToHost);
+                cudaMemcpy(&lastIsZero, dev_bits + (n - 1), sizeof(int), cudaMemcpyDeviceToHost);
+                const int totalZeros = lastScan + lastIsZero;
+
+                kernScatterByBit<<<gridSize, BLOCK_SIZE >>>(n, dev_in, dev_bits, dev_scanned, dev_out, totalZeros);
+
+                std::swap(dev_in, dev_out);
+            }
+
+            timer().endGpuTimer();
+
+            cudaMemcpy(odata, dev_in, n * sizeof(int), cudaMemcpyDeviceToHost);
+
+            cudaFree(dev_in);
+            cudaFree(dev_out);
+            cudaFree(dev_bits);
+            cudaFree(dev_scanned);
         }
     }
 }
