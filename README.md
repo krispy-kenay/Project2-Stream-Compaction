@@ -129,3 +129,77 @@ For this test I compared my GPU radix sort against `std::sort` from 16 up to $2^
 ## Analysis
 
 Overall, the results match what I expected. The CPU is unbeatable at small sizes and only starts slowing down after about one million elements and thrust is the clear winner above that because of its optimizations with shared memory, occupancy, and memory access. But it was surprising to see that the work-efficient GPU scan didn't manage to beat the CPU scan even for very large arrays. The siutation is relatively similar for compaction and the subtiming breakdown shows that scan is the main bottleneck on GPU while map and scatter are more important on CPU. For radix sort, the GPU version scales well but doesn't yet manage to beat the CPU without further optimizations.
+
+---
+
+## Test output
+
+Output from the pre-written test + a custom test comparing and validating my radix sort against `std::sort`
+
+```
+****************
+** SCAN TESTS **
+****************
+    [  36  44  23  27   6   7  41   5  42   2  14  30  34 ...  25   0 ]
+==== cpu scan, power-of-two ====
+   elapsed time: 1.4204ms    (std::chrono Measured)
+    [   0  36  80 103 130 136 143 184 189 231 233 247 277 ... 102713478 102713503 ]
+==== cpu scan, non-power-of-two ====
+   elapsed time: 1.3675ms    (std::chrono Measured)
+    [   0  36  80 103 130 136 143 184 189 231 233 247 277 ... 102713409 102713440 ]
+    passed
+==== naive scan, power-of-two ====
+   elapsed time: 7.02432ms    (CUDA Measured)
+    passed
+==== naive scan, non-power-of-two ====
+   elapsed time: 6.96771ms    (CUDA Measured)
+    passed
+==== work-efficient scan, power-of-two ====
+   elapsed time: 1.38426ms    (CUDA Measured)
+    passed
+==== work-efficient scan, non-power-of-two ====
+   elapsed time: 1.35088ms    (CUDA Measured)
+    passed
+==== thrust scan, power-of-two ====
+   elapsed time: 0.410848ms    (CUDA Measured)
+    passed
+==== thrust scan, non-power-of-two ====
+   elapsed time: 0.387072ms    (CUDA Measured)
+    passed
+
+*****************************
+** STREAM COMPACTION TESTS **
+*****************************
+    [   2   2   3   3   0   3   3   3   2   2   0   0   2 ...   3   0 ]
+==== cpu compact without scan, power-of-two ====
+   elapsed time: 8.2765ms    (std::chrono Measured)
+    [   2   2   3   3   3   3   3   2   2   2   3   1   3 ...   3   3 ]
+    passed
+==== cpu compact without scan, non-power-of-two ====
+   elapsed time: 8.8411ms    (std::chrono Measured)
+    [   2   2   3   3   3   3   3   2   2   2   3   1   3 ...   1   3 ]
+    passed
+==== cpu compact with scan ====
+   elapsed time: 14.249ms    (std::chrono Measured)
+    [   2   2   3   3   3   3   3   2   2   2   3   1   3 ...   3   3 ]
+    passed
+==== work-efficient compact, power-of-two ====
+   elapsed time: 3.45242ms    (CUDA Measured)
+    passed
+==== work-efficient compact, non-power-of-two ====
+   elapsed time: 3.82582ms    (CUDA Measured)
+    passed
+
+*******************
+** SORTING TESTS **
+*******************
+4194304
+    [  36  44  23  27   6   7  41   5  42   2  14  30  34 ...  25  25 ]
+==== cpu std::sort ====
+   elapsed time: 73.1832ms    (std::chrono Measured)
+    [   0   0   0   0   0   0   0   0   0   0   0   0   0 ...  49  49 ]
+==== work-efficient radix sort ====
+   elapsed time: 87.3332ms    (CUDA Measured)
+    [   0   0   0   0   0   0   0   0   0   0   0   0   0 ...  49  49 ]
+    passed
+```
