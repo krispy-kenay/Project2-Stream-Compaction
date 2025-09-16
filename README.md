@@ -40,6 +40,12 @@ Finally, for the extra credit I implemented radix sort on top of the work-effici
 
 ### CPU vs GPU Scaling
 
+For this test I tested power-of-two inputs ranging from $2^3$ (8) elements up to $2^{28}$ (268435456) elements on the various scan implementations.
+
+![GPU speedup factor](images/gpu_vs_cpu.png)
+
+Naive GPU scan stays below zero everywhere. Starting at a factor somewhere around 0.0001x for small arrays and growing towards a factor of 0.2x (still 5 times slower) at $2^{20}$ elements. It levels off after that and stays relatively constant. The work-efficient scan is better than naive but it also sits below zero across the whole sweep, though it does better with a 0.51x factor towards the end of the range. Thrust starts negative at the very small sizes, crosses to positive as we scale up, and then keeps climbing. Around the mid-range its ahead of the CPU by about a factor of 1.5x and at the very end, thrust is 8.06 ms, which is roughly 5.9x faster than CPU.
+
 <details>
   <summary>Raw Data</summary>
   
@@ -64,7 +70,7 @@ There is a clear optimum for the naive scan at 128 threads per block with 1.873 
 
 ### Scan Runtimes
 
-For this test I tested both power-of-two inputs against arbitrary non-power-of-two inputs ranging from $2^3$ (8) elements up to $2^{28}$ (268435456) elements on the various scan implementations.
+For this test I tested both power-of-two inputs and arbitrary non-power-of-two inputs ranging from $2^3$ (8) elements up to $2^{28}$ (268435456) elements on the various scan implementations.
 
 ![Scan vs. runtime](images/scan_runtimes.png)
 
