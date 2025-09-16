@@ -136,6 +136,22 @@ For this test I compared my GPU radix sort against `std::sort` from 16 up to $2^
 
 Overall, the results match what I expected. The CPU is unbeatable at small sizes and only starts slowing down after about one million elements and thrust is the clear winner above that because of its optimizations with shared memory, occupancy, and memory access. But it was surprising to see that the work-efficient GPU scan didn't manage to beat the CPU scan even for very large arrays. The siutation is relatively similar for compaction and the subtiming breakdown shows that scan is the main bottleneck on GPU while map and scatter are more important on CPU. For radix sort, the GPU version scales well but doesn't yet manage to beat the CPU without further optimizations.
 
+### Nsight Observations
+
+To analyze why the different GPU scans behave the way they do, I ran Nsight Compute in isolation on the scan kernels with an input size of $2^{26}$.
+
+![Naive Nsight](images/naive_nsight.png)
+
+For the naive scan, Nsight shows that every pass is heavily memory limited, with global memory bandwidth at over 85% while compute utilization hovers around 15%. Since the algorithm requires $\log_2(n)$ full passes plus an additional conversion step, the overall runtime grows with repeated bandwidth-limited kernel launches. This makes it slow even though each individual kernel launch is efficient in isolation.
+
+![Efficient Nsight](images/efficient_nsight.png)
+
+The work-efficient scan reduces the total work to $O(n)$, but the upsweep and downsweep phases each launch a series of kernels whose grid size halves every level. At the deeper levels this leaves only a few blocks active and most of the GPU idle but still the same launch and synchronization overhead per kernel. This results in good utilization at the top of the tree but bad utilization near the bottom which brings down the overall performance.
+
+![Thrust Nsight](images/thrust_nsight.png)
+
+Thrust only launches a couple of kernels, with the main one hitting over 90% memory throughput while avoiding the repeated global passes that slow down the custom implementations. This explains why Thrust quickly overtakes the CPU once the arrays become large, while the naive and work-efficient versions both struggle to keep up.
+
 ---
 
 ## Test output
