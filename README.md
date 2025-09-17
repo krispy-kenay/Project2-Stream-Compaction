@@ -13,7 +13,6 @@ This project implements stream compaction in CUDA using different versions of pr
 
 As per the project instruction, I implemented all the required scan and compaction variants, plus radix sort as an extension. Below is a breakdown of the different implementations and how they work.
 
-
 ### CPU Scan & Compaction
 
 For the CPU side, I wrote three different functions. The scan is implemented as a simple exclusive prefix sum using a for loop. Then I added two versions of compaction: one that simply loops over the input and copies nonzero values directly, and one that mirrors the GPU algorithm by performing map → scan → scatter on the CPU. These CPU versions serve as the correctness reference for all the GPU tests.  
@@ -32,7 +31,11 @@ Thrust’s scan is just a wrapper around `thrust::exclusive_scan` on a device ve
 
 ### Radix Sort (Extra Credit)
 
-Finally, for the extra credit I implemented radix sort on top of the work-efficient scan. Each digit is processed by splitting the array into buckets using map → scan → scatter, and then recombining them. Repeating this for each bit group results in a complete integer sort on the GPU.  
+Finally, for the extra credit I implemented radix sort on top of the work-efficient scan. Each digit is processed by splitting the array into buckets using map → scan → scatter, and then recombining them. Repeating this for each bit group results in a complete integer sort on the GPU.
+
+### CMake modifications
+
+I had to modify the CMakeLists.txt and add `target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v13.0/include")` after `add_executable(...)` because otherwise CMake somehow cannot find CUDA. But aside from that I didn't add any other files or changed the file in any other way.
 
 ---
 
